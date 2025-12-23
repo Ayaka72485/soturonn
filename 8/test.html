@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ベース音テスト（ADSR & LPF付き）</title>
+</head>
+<body>
+<h1>ベース音テスト</h1>
+<p>Tone.js MonoSynth風の音色で鳴らせます。</p>
+
+<button id="playBtn">ベース音を鳴らす</button>
+<button id="stopBtn">停止</button>
+
+<script>
+let audioCtx;
+let osc;
+let gainNode;
+let filter;
+
+const playBtn = document.getElementById('playBtn');
+const stopBtn = document.getElementById('stopBtn');
+
+// MonoSynthのパラメータ
+const params = {
+    oscillatorType: 'square',
+    filterFreq: 800,   // ローパスフィルターのカットオフ
+    filterQ: 1,
+    envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.5 }
+};
+
+playBtn.onclick = () => {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // オシレーター作成
+    osc = audioCtx.createOscillator();
+    osc.type = params.oscillatorType;
+    osc.frequency.value = 55; // A1低音
+
+    // フィルター作成
+    filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = params.filterFreq;
+    filter.Q.value = params.filterQ;
+
+    // ゲイン（ADSR）作成
+    gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime); // 初期0
+
+    // 接続
+    osc.connect(filter).connect(gainNode).connect(audioCtx.destination);
+
+    // ADSRエンベロープ
+    const now = audioCtx.currentTime;
+    const env = params.envelope;
+    gainNode.gain.linearRampToValueAtTime(1, now + env.attack);
+    gainNode.gain.linearRampToValueAtTime(env.sustain, now + env.attack + env.decay);
+
+    osc.start(now);
+
+    // 10秒後にリリースして停止（テスト用）
+    const stopTime = now + 10;
+    gainNode.gain.linearRampToValueAtTime(0, stopTime + env.release);
+    osc.stop(stopTime + env.release);
+};
+
+stopBtn.onclick = () => {
+    if (osc) {
+        osc.stop();
+        osc.disconnect();
+        osc = null;
+    }
+    if (gainNode) {
+        gainNode.disconnect();
+        gainNode = null;
+    }
+    if (filter) {
+        filter.disconnect();
+        filter = null;
+    }
+};
+</script>
+</body>
+</html>

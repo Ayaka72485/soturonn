@@ -1,0 +1,60 @@
+/* 丸ボタンの共通スタイル */
+.control-circle {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+  }
+  
+  /* SVGアイコン */
+  .icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+  }
+  
+  /* 色だけ分ける */
+  .play-btn {
+    background-color: #22c55e; /* green */
+    color: white;
+  }
+  
+  .stop-btn {
+    background-color: #ef4444; /* red */
+    color: white;
+  }
+
+  .control-circle {
+    width: 48px;
+    height: 48px;
+    padding: 0 !important;   /* ←これが効く */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+  }
+  
+  .control-btn { 
+    @apply bg-gray-200 hover:bg-gray-300 ...
+  }
+  .pitch-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+  }
+  
+  #noteName {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  #midiNumber {
+    font-size: 11px;
+    color: #999;
+    min-height: 1em;   /* ← ここが超重要 */
+  }
+  
