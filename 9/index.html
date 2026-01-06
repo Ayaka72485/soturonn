@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ベース演奏練習支援システム (卒論プロトタイプ)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.39/build/Tone.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.27/build/Midi.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.min.js"></script>
+<link rel="stylesheet" href="style.css">
+
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  body { font-family: 'Inter', sans-serif; }
+  .pitch-display { min-height: 5rem; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 700; background-color: #1F2937; color: white; }
+  .control-btn { @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-150; }
+  .canvas-container { border: 1px solid #E5E7EB; border-radius: 0.5rem; overflow: hidden; }
+  .slider-label { @apply flex items-center justify-between text-sm text-gray-700; }
+  .slider-range { @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+
+<div class="max-w-7xl mx-auto">
+    <header class="flex justify-between items-center mb-6 border-b pb-4">
+        <div class="flex space-x-6 text-gray-600 font-medium">
+            <span class="text-blue-600 font-bold">ベース演奏練習支援システム</span>
+        </div>
+        <div class="flex items-center space-x-2 text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="font-semibold">User</span>
+        </div>
+    </header>
+
+    <div class="flex flex-col lg:flex-row space-y-6 lg:space-y-0 lg:space-x-6">
+        
+        <main class="flex-grow bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">音高バー / リアルタイムフィードバック</h2>
+            
+            <div class="pitch-display rounded-lg mb-4 shadow-inner" id="pitch-display">
+                ---
+            </div>
+        
+
+              
+            
+            <div class="canvas-container mb-6">
+                <canvas id="visual" width="800" height="260" class="w-full h-auto"></canvas>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 border-t pt-4">
+                
+                <div class="flex items-center space-x-4">
+                    <label class="font-medium text-gray-700">BPM:</label>
+                    <input type="number" id="bpmInput" value="120" min="40" max="300" class="w-20 border rounded-lg text-center p-1 text-sm">
+                    <button id="setBpmBtn" class="control-btn text-sm px-3">設定</button>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button id="rewindBtn" class="control-btn p-3 rounded-full">
+                        <svg viewBox="0 0 24 24" class="icon">
+                          <!-- 左向き三角 ×2 -->
+                          <polygon points="11,12 20,5 20,19"></polygon>
+                          <polygon points="4,12 13,5 13,19"></polygon>
+                        </svg>
+                      </button>
+                      
+                    <button id="startPlayBtn" class="control-btn control-circle play-btn">
+                        <svg viewBox="0 0 24 24" class="icon">
+                          <polygon points="5,3 19,12 5,21"></polygon>
+                        </svg>
+                      </button>
+                      <button id="stopPlayBtn" class="control-btn control-circle stop-btn">
+                        <svg viewBox="0 0 24 24" class="icon">
+                          <rect x="5" y="5" width="14" height="14"></rect>
+                        </svg>
+                      </button>
+                      
+                      <button id="forwardBtn" class="control-btn p-3 rounded-full">
+                        <svg viewBox="0 0 24 24" class="icon">
+                          <!-- 右向き三角 ×2 -->
+                          <polygon points="4,5 4,19 13,12"></polygon>
+                          <polygon points="11,5 11,19 20,12"></polygon>
+                        </svg>
+                      </button>
+                      
+                </div>
+
+
+            </div>
+            <!-- ===== In / Out & 苦手箇所 ===== -->
+            <div class="mt-6 space-y-4 border-t pt-4">
+
+                <!-- In / Out 操作 -->
+                <div id="weak-section-controls" class="flex items-center space-x-2">
+                    <button id="markInBtn" class="control-btn text-sm px-3">In</button>
+                    <button id="markOutBtn" class="control-btn text-sm px-3">Out</button>
+                    <button id="registerWeakBtn" class="control-btn text-sm px-3 bg-red-100">
+                        苦手箇所として登録
+                    </button>
+                </div>
+
+                <!-- 苦手箇所一覧 -->
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-700 mb-1">
+                        苦手箇所一覧
+                    </h3>
+                    <div
+                        id="weakSpotsList"
+                        class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-600 text-xs max-h-32 overflow-y-auto"
+                    >
+                        現在登録されている苦手箇所はありません。
+                    </div>
+                </div>
+
+            </div>
+
+
+            <div class="mt-4">
+                <input type="range" id="timelineSlider" min="0" max="100" value="0" class="slider-range">
+                <div id="currentTimeDisplay" class="text-xs text-gray-500 mt-1 text-right">0:00 / 0:00</div>
+            </div>
+            
+
+            </div>
+
+
+        </main>
+        
+        <aside class="w-full lg:w-72 bg-white p-6 rounded-xl shadow-lg flex-shrink-0">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">音源・練習設定</h2>
+
+            <div class="mb-6 border-b pb-4">
+                <h3 class="font-semibold text-lg mb-2">MIDI音源 (正解データ)</h3>
+                <input type="file" id="midiFileInput" accept=".mid, .midi" class="block w-full text-sm border-gray-300 rounded-lg cursor-pointer bg-gray-50 mb-2">
+                <div id="midiStatus" class="text-sm text-gray-600">MIDIファイルを読み込んでください...</div>
+            </div>
+
+            <div class="mb-6 border-b pb-4">
+                <h3 class="font-semibold text-lg mb-2">原曲ファイル</h3>
+                <input type="file" id="audioFileInput" accept=".mp3, .wav, .m4a, .mp4" class="block w-full text-sm border-gray-300 rounded-lg cursor-pointer bg-gray-50 mb-2">
+                <div id="audioStatus" class="text-sm text-gray-600">原曲を読み込んでください...</div>
+
+                <!-- 再生モード選択（原曲が読み込まれたら表示） -->
+                <div id="playModeContainer" class="mt-3" style="display:none;">
+                    <div class="text-sm text-gray-700 mb-1">再生モード</div>
+                    <div class="flex flex-col space-y-1 text-sm">
+                        <label><input type="radio" name="playMode" value="original" checked> 原曲のみ</label>
+                        <label><input type="radio" name="playMode" value="midi"> MIDIベースのみ</label>
+                        <label><input type="radio" name="playMode" value="both"> 原曲 + MIDIベース</label>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-lg mb-3">パート別音量調整</h3>
+                <div class="space-y-3">
+                    <label class="slider-label">ベース音源: <span id="bassVolumeLabel">100</span></label>
+                    <input type="range" id="bassVolumeSlider" min="0" max="100" value="100" class="slider-range">
+
+                    <label class="slider-label">原曲全体: <span id="masterVolumeLabel">50</span></label>
+                    <input type="range" id="masterVolumeSlider" min="0" max="100" value="50" class="slider-range">
+                </div>
+            </div>
+            <!-- ===== 練習モード切替 ===== -->
+            <div style="margin: 10px 0;">
+                <label>
+                <input type="radio" name="practiceMode" value="midi" checked>
+                MIDI練習（厳密判定）
+                </label>
+                <label style="margin-left: 15px;">
+                <input type="radio" name="practiceMode" value="original">
+                原曲練習（ノリ許容）
+                </label>
+            </div>
+            <div class="mt-4 border-t pt-3">
+                <h4 class="text-sm font-semibold mb-2">表示オプション</h4>
+              
+                <label class="block text-sm">
+                  <input type="checkbox" id="togglePitchGuide" checked>
+                  音高バー（お手本）を表示
+                </label>
+              </div>
+              
+              <label class="block text-sm mt-2">
+                <input type="checkbox" id="toggleUserHistory" checked>
+                自分の演奏履歴を表示
+              </label>
+
+              
+        </aside>
+    </div>
+</div>
+
+<!-- スクリプト順序: 可視化 -> MIDI解析 -> 原曲管理 -> ベース再生 -> アプリ本体 -->
+
+<script src="app.bundle.js"></script>
+
+</body>
+</html>
